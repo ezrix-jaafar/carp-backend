@@ -115,6 +115,7 @@ class BulkCarpetController extends Controller
             'status' => 'nullable|in:pending,picked_up,in_cleaning,cleaned,delivered',
             'notes' => 'nullable|string',
             'additional_charges' => 'nullable|numeric|min:0',
+            'carpet_type_id' => 'nullable|exists:carpet_types,id',
         ]);
         
         if ($validator->fails()) {
@@ -123,7 +124,7 @@ class BulkCarpetController extends Controller
         
         // Update carpet details
         $carpet->update($request->only([
-            'width', 'length', 'color', 'status', 'notes', 'additional_charges'
+            'width', 'length', 'color', 'status', 'notes', 'additional_charges', 'carpet_type_id'
         ]));
         
         return response()->json([
