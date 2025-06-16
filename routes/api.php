@@ -37,7 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Carpets
     Route::get('/carpets', [App\Http\Controllers\Api\CarpetController::class, 'all']);
     Route::get('/carpets/assigned', [App\Http\Controllers\Api\CarpetController::class, 'assigned']);
-    Route::apiResource('carpets', App\Http\Controllers\Api\CarpetController::class);
+    Route::apiResource('carpets', App\Http\Controllers\Api\CarpetController::class)->except(['index']);
     Route::post('/carpets/{id}/images', [App\Http\Controllers\Api\CarpetController::class, 'uploadImage']);
     Route::delete('/carpets/{id}/images/{imageId}', [App\Http\Controllers\Api\CarpetController::class, 'deleteImage']);
     
