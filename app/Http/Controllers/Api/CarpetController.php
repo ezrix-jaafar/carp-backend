@@ -14,6 +14,93 @@ use Illuminate\Support\Str;
 class CarpetController extends Controller
 {
     /**
+     * List carpets for operations team with optional status filter & pagination.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function all(Request $request)
+    {
+        try {
+            $statusFilter = $request->input('status'); // array or string
+            $perPage = $request->integer('per_page', 15);
+            $sortBy = $request->input('sort_by', 'updated_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            $query = Carpet::with(['order.client', 'order.agent']);
+            if ($statusFilter) {
+                if (is_array($statusFilter)) {
+                    $query->whereIn('status', $statusFilter);
+                } else {
+                    $query->where('status', $statusFilter);
+                }
+            }
+
+            $carpets = $query->orderBy($sortBy, $sortDirection)->paginate($perPage);
+            return response()->json($carpets);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to retrieve carpets',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    /**
+     * Get carpets assigned to the authenticated agent filtered by status.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function assigned(Request $request)
+    {
+        try {
+            $user = $request->user();
+            if ($user->role !== 'agent') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Only agents can access assigned carpets',
+                ], 403);
+            }
+
+            $statusFilter = $request->input('status'); // can be array or single value
+            $perPage = $request->integer('per_page', 15);
+            $sortBy = $request->input('sort_by', 'updated_at');
+            $sortDirection = $request->input('sort_direction', 'desc');
+
+            $agentId = optional($user->agent)->id;
+            if (!$agentId) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Agent profile not found for this user',
+                ], 404);
+            }
+
+            $query = Carpet::with(['order.client'])
+                ->whereHas('order', function ($q) use ($agentId) {
+                    $q->where('agent_id', $agentId);
+                });
+
+            if ($statusFilter) {
+                if (is_array($statusFilter)) {
+                    $query->whereIn('status', $statusFilter);
+                } else {
+                    $query->where('status', $statusFilter);
+                }
+            }
+
+            $carpets = $query->orderBy($sortBy, $sortDirection)->paginate($perPage);
+
+            return response()->json($carpets);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to retrieve assigned carpets',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    /**
      * Get all carpets for a specific order.
      *
      * @param Request $request

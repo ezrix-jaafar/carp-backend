@@ -14,7 +14,7 @@ class CarpetsRelationManager extends RelationManager
 {
     protected static string $relationship = 'carpets';
     protected static ?string $recordTitleAttribute = 'qr_code';
-    
+
     // Make sure the relationship key is set
     protected static ?string $inverseRelationship = 'order';
 
@@ -36,7 +36,7 @@ class CarpetsRelationManager extends RelationManager
                                     ->dehydrated(false)
                                     ->disabled(),
                             ]),
-                            
+
                         Forms\Components\Grid::make(1)
                             ->schema([
                                 Forms\Components\TextInput::make('pack_number')
@@ -46,7 +46,7 @@ class CarpetsRelationManager extends RelationManager
                                     ->dehydrated(false)
                                     ->disabled(),
                             ]),
-                            
+
                         Forms\Components\Grid::make(1)
                             ->schema([
                                 Forms\Components\Select::make('carpet_type_id')
@@ -56,7 +56,7 @@ class CarpetsRelationManager extends RelationManager
                                     ->preload()
                                     ->required(),
                             ]),
-                            
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('width')
@@ -76,7 +76,7 @@ class CarpetsRelationManager extends RelationManager
                                     ->placeholder('Will be measured at HQ')
                                     ->helperText('Enter dimension in feet (Optional for Agents)'),
                             ]),
-                            
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('color')
@@ -99,7 +99,7 @@ class CarpetsRelationManager extends RelationManager
                             ]),
                     ])
                     ->collapsible(),
-                    
+
                 // Services and pricing section
                 Forms\Components\Section::make('Services & Pricing')
                     ->description('Additional services and charges')
@@ -111,7 +111,7 @@ class CarpetsRelationManager extends RelationManager
                             ->default(0.00)
                             ->placeholder('Will be determined at HQ')
                             ->helperText('Optional for Agents, will be determined at HQ'),
-                            
+
                         Forms\Components\Select::make('addon_services')
                             ->label('Addon Services')
                             ->multiple()
@@ -122,7 +122,7 @@ class CarpetsRelationManager extends RelationManager
                             ->required(false),
                     ])
                     ->collapsible(),
-                
+
                 // Documentation section
                 Forms\Components\Section::make('Documentation')
                     ->description('Photos and notes')
@@ -138,7 +138,7 @@ class CarpetsRelationManager extends RelationManager
                             ->helperText('Take photos of the carpet (required for agents)')
                             ->downloadable()
                             ->dehydrated(false),
-                            
+
                         Forms\Components\Textarea::make('notes')
                             ->label('Client Special Request')
                             ->placeholder('Enter any special requests from the client')
@@ -223,7 +223,7 @@ class CarpetsRelationManager extends RelationManager
                             ->minValue(1)
                             ->placeholder('Enter quantity of carpets to generate')
                             ->default(1),
-                            
+
                         Forms\Components\Select::make('carpet_type_id')
                             ->label('Default Carpet Type (Optional)')
                             ->relationship('carpetType', 'name')
@@ -231,7 +231,7 @@ class CarpetsRelationManager extends RelationManager
                             ->preload()
                             ->required(false)
                             ->helperText('Leave blank if carpet type will be determined during pickup'),
-                            
+
                         Forms\Components\Checkbox::make('generate_pdf')
                             ->label('Generate PDF Labels')
                             ->default(true),
@@ -241,17 +241,17 @@ class CarpetsRelationManager extends RelationManager
                         $quantity = (int) $data['quantity'];
                         $carpetType = $data['carpet_type_id'];
                         $generatePdf = $data['generate_pdf'] ?? true;
-                        
+
                         // Get current number of carpets
                         $currentCount = $order->carpets()->count();
-                        
+
                         // Create multiple carpet records
                         $carpets = [];
                         for ($i = 1; $i <= $quantity; $i++) {
                             $carpetNumber = $currentCount + $i;
                             $qrCode = \App\Models\Carpet::generateQrCode($order->id, $carpetNumber);
                             $packNumber = $carpetNumber . '/' . ($currentCount + $quantity);
-                            
+
                             $carpet = $order->carpets()->create([
                                 'qr_code' => $qrCode,
                                 'pack_number' => $packNumber,
@@ -260,21 +260,21 @@ class CarpetsRelationManager extends RelationManager
                                 'status' => 'pending',
                                 'additional_charges' => 0,
                             ]);
-                            
+
                             $carpets[] = $carpet;
                         }
-                        
+
                         // Update the order total_carpets field
                         $order->update([
                             'total_carpets' => $currentCount + $quantity
                         ]);
-                        
+
                         // Return success notification
                         if ($generatePdf) {
                             // Redirect to a printable page with all the QR codes
                             $carpetIds = collect($carpets)->pluck('id')->join(',');
                             $url = route('admin.carpets.bulk-qr-codes', ['carpets' => $carpetIds]);
-                            
+
                             // Success message with redirect
                             $action->success('Generated ' . $quantity . ' carpet labels successfully!');
                             redirect()->to($url);
@@ -282,30 +282,30 @@ class CarpetsRelationManager extends RelationManager
                             $action->success('Generated ' . $quantity . ' carpet records successfully!');
                         }
                     }),
-                
+
                 Tables\Actions\CreateAction::make()
                     ->before(function (Tables\Actions\CreateAction $action) {
                         // Nothing needed here, relationship handling is automatic
                     })
                     ->action(function (array $data): void {
                         $order = $this->getOwnerRecord();
-                        
+
                         // Get the total number of carpets for the order (existing + new one)
                         $totalCarpets = $order->carpets()->count() + 1;
-                        
+
                         // Calculate what number this carpet is in the order
                         $carpetNumber = $totalCarpets;
-                        
+
                         // Use the order's total_carpets field or the current carpet number
                         $totalInOrder = $order->total_carpets ?? $carpetNumber;
-                        
+
                         // Generate QR code and pack number
                         $qrCode = \App\Models\Carpet::generateQrCode($order->id, $carpetNumber);
                         $packNumber = $carpetNumber . '/' . $totalInOrder;
-                        
+
                         // Ensure the color field has a default value
                         $color = !empty($data['color']) ? $data['color'] : 'Unknown';
-                        
+
                         // Create the carpet with the generated QR code
                         $carpet = $order->carpets()->create([
                             'qr_code' => $qrCode,
@@ -318,7 +318,7 @@ class CarpetsRelationManager extends RelationManager
                             'notes' => $data['notes'] ?? null,
                             'additional_charges' => $data['additional_charges'] ?? 0,
                         ]);
-                        
+
                         // Handle addon services
                         if (isset($data['addon_services']) && !empty($data['addon_services'])) {
                             $addonServiceIds = $data['addon_services'];
@@ -326,14 +326,14 @@ class CarpetsRelationManager extends RelationManager
                                 $carpet->addonServices()->attach($addonServiceId);
                             }
                         }
-                        
+
                         // Handle image uploads
                         if (isset($data['carpet_images']) && !empty($data['carpet_images'])) {
                             foreach ($data['carpet_images'] as $imageFile) {
                                 // Store the image
                                 $storagePath = 'carpet-images/' . $order->id . '/' . $carpet->id;
                                 $path = $imageFile->store($storagePath, 'public');
-                                
+
                                 // Create image record associated with this carpet
                                 $carpet->images()->create([
                                     'path' => $path,
