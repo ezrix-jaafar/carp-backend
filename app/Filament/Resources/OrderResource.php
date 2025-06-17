@@ -576,6 +576,7 @@ class OrderResource extends Resource
         return [
             RelationManagers\CarpetsRelationManager::class,
             RelationManagers\InvoicesRelationManager::class,
+            RelationManagers\StatusHistoriesRelationManager::class,
         ];
     }
 

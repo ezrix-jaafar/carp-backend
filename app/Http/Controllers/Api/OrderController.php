@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Models\OrderStatusHistory;
 
 class OrderController extends Controller
 {
@@ -238,7 +239,7 @@ class OrderController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'agent_id' => 'nullable|exists:agents,id',
-                'status' => 'nullable|in:pending,assigned,picked_up,in_cleaning,hq_inspection,cleaned,delivered,completed,cancelled',
+                'status' => 'nullable|in:pending,assigned,agent_accepted,agent_rejected,picked_up,in_cleaning,hq_inspection,cleaned,delivered,completed,cancelled',
                 'pickup_date' => 'nullable|date',
                 'pickup_address_id' => 'nullable|exists:addresses,id',
                 'delivery_date' => 'nullable|date|after_or_equal:pickup_date',
@@ -269,7 +270,9 @@ class OrderController extends Controller
                     $newStatus = $request->status;
                     
                     $validTransitions = [
-                        'assigned' => ['picked_up'],
+                        // Agent can accept or reject an assigned order
+                        'assigned' => ['agent_accepted', 'agent_rejected'],
+                        'agent_accepted' => ['picked_up'],
                         'picked_up' => ['in_cleaning'],
                         'in_cleaning' => ['cleaned'],
                         'cleaned' => ['delivered'],
@@ -304,6 +307,15 @@ class OrderController extends Controller
             // Perform update if there are any allowed fields to update
             if (!empty($updateData)) {
                 $order->update($updateData);
+                // Post-update logging
+                if (isset($oldStatus) && $oldStatus !== $order->status) {
+                    OrderStatusHistory::create([
+                        'order_id' => $order->id,
+                        'old_status' => $oldStatus,
+                        'new_status' => $order->status,
+                        'changed_by' => $request->user()->id ?? null,
+                    ]);
+                }
             }
 
             // If agent was assigned, update status
@@ -455,6 +467,142 @@ class OrderController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to retrieve agent orders',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Assign an agent to an order.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function assignAgent(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+
+            // Only HQ or staff can assign agents
+            if ($user->role !== 'hq' && $user->role !== 'staff') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You do not have permission to assign agents',
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'agent_id' => 'required|exists:agents,id',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $order = Order::findOrFail($id);
+
+            // Only assign if order not completed or cancelled
+            if (in_array($order->status, ['completed', 'cancelled'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'This order cannot be assigned',
+                ], 422);
+            }
+
+            $order->agent_id = $request->agent_id;
+            $order->status = 'assigned';
+            $order->save();
+
+            // Push notification to agent via FCM
+            \App\Services\FCMPushService::sendOrderAssigned($order);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Agent assigned successfully',
+                'data' => $order->load(['agent.user']),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to assign agent',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update order status (dedicated endpoint).
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param int $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $order = Order::findOrFail($id);
+
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:agent_accepted,agent_rejected,picked_up,in_cleaning,cleaned,delivered,completed,cancelled',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $newStatus = $request->status;
+            $currentStatus = $order->status;
+
+            // Permissions and transition validation
+            if ($user->role === 'agent') {
+                if (!$user->agent || $user->agent->id !== $order->agent_id) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'You do not have permission to update this order',
+                    ], 403);
+                }
+
+                $validTransitions = [
+                    'assigned' => ['agent_accepted', 'agent_rejected'],
+                    'agent_accepted' => ['picked_up'],
+                    'picked_up' => ['in_cleaning'],
+                    'in_cleaning' => ['cleaned'],
+                    'cleaned' => ['delivered'],
+                    'delivered' => ['completed'],
+                ];
+
+                if (!isset($validTransitions[$currentStatus]) ||
+                    !in_array($newStatus, $validTransitions[$currentStatus])) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Invalid status transition',
+                    ], 422);
+                }
+            } elseif (!in_array($user->role, ['hq', 'staff'])) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unauthorized',
+                ], 403);
+            }
+
+            if ($newStatus === 'agent_rejected') {
+                $order->agent_id = null; // free up order for reassignment
+            }
+
+            $order->status = $newStatus;
+            $order->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Order status updated successfully',
+                'data' => $order,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update order status',
                 'error' => $e->getMessage(),
             ], 500);
         }

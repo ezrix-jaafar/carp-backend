@@ -62,6 +62,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/agents/{agentId}/commissions', [App\Http\Controllers\Api\CommissionController::class, 'getAgentCommissions']);
     Route::post('/commissions/calculate', [App\Http\Controllers\Api\CommissionController::class, 'calculateCommission']);
     
+        // Devices for push notifications
+    Route::post('/devices', [App\Http\Controllers\Api\DeviceController::class, 'store']);
+    Route::delete('/devices/{token}', [App\Http\Controllers\Api\DeviceController::class, 'destroy']);
+
     // Agents
     Route::apiResource('agents', App\Http\Controllers\Api\AgentController::class);
     Route::put('/agents/{id}/toggle-status', [App\Http\Controllers\Api\AgentController::class, 'toggleStatus']);

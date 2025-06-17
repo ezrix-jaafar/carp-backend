@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Auth;
+use App\Models\OrderStatusHistory;
 
 class Order extends Model
 {
@@ -22,6 +24,18 @@ class Order extends Model
         static::creating(function ($order) {
             if (empty($order->reference_number)) {
                 $order->reference_number = self::generateReferenceNumber();
+            }
+        });
+
+        // Log status changes
+        static::updated(function ($order) {
+            if ($order->wasChanged('status')) {
+                OrderStatusHistory::create([
+                    'order_id'   => $order->id,
+                    'old_status' => $order->getOriginal('status'),
+                    'new_status' => $order->status,
+                    'changed_by' => Auth::id(),
+                ]);
             }
         });
     }
@@ -101,7 +115,16 @@ class Order extends Model
     {
         return $this->belongsTo(Address::class, 'delivery_address_id');
     }
-    
+
+    /**
+     * Get the status history records for the order.
+     */
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class);
+    }
+
+
     /**
      * Generate a unique reference number.
      *
