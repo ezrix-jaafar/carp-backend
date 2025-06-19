@@ -82,12 +82,12 @@ class OrderResource extends Resource
                             ->options([
                                 'pending' => 'Pending',
                                 'awaiting_agent' => 'Awaiting Agent',
-                                'assigned' => 'Assigned',
+                                'assigned' => 'Waiting for Pickup',
                                 'picked_up' => 'Picked Up',
                                 'hq_inspection' => 'HQ Inspection',
                                 'in_cleaning' => 'In Cleaning',
                                 'cleaned' => 'Cleaned',
-                                'delivered' => 'Delivered',
+                                'delivered' => 'Delivered To Agent',
                                 'completed' => 'Completed',
                                 'canceled' => 'Canceled',
                             ])
@@ -304,11 +304,11 @@ class OrderResource extends Resource
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'pending' => 'Pending',
                         'awaiting_agent' => 'Awaiting Agent',
-                        'assigned' => 'Assigned',
+                        'assigned' => 'Waiting for Pickup',
                         'picked_up' => 'Picked Up',
                         'in_cleaning' => 'In Cleaning',
                         'cleaned' => 'Cleaned',
-                        'delivered' => 'Delivered',
+                        'delivered' => 'Delivered To Agent',
                         'completed' => 'Completed',
                         'cancelled' => 'Cancelled',
                         default => ucfirst($state),
@@ -344,11 +344,11 @@ class OrderResource extends Resource
                     ->options([
                         'pending' => 'Pending',
                         'awaiting_agent' => 'Awaiting Agent',
-                        'assigned' => 'Assigned',
+                        'assigned' => 'Waiting for Pickup',
                         'picked_up' => 'Picked Up',
                         'in_cleaning' => 'In Cleaning',
                         'cleaned' => 'Cleaned',
-                        'delivered' => 'Delivered',
+                        'delivered' => 'Delivered To Agent',
                         'completed' => 'Completed',
                         'cancelled' => 'Cancelled',
                     ]),
@@ -458,12 +458,12 @@ class OrderResource extends Resource
                             Forms\Components\Select::make('status')
                                 ->options([
                                     'pending' => 'Pending',
-                                    'assigned' => 'Assigned',
+                                    'assigned' => 'Waiting for Pickup',
                                     'picked_up' => 'Picked Up',
                                     'hq_inspection' => 'HQ Inspection',
                                     'in_cleaning' => 'In Cleaning',
                                     'cleaned' => 'Cleaned',
-                                    'delivered' => 'Delivered',
+                                    'delivered' => 'Delivered To Agent',
                                     'completed' => 'Completed',
                                     'canceled' => 'Canceled',
                                 ])

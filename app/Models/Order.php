@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use App\Models\OrderStatusHistory;
 
 class Order extends Model
@@ -63,6 +64,8 @@ class Order extends Model
      *
      * @var array<string, string>
      */
+    protected $appends = ['status_label'];
+
     protected $casts = [
         'pickup_date' => 'date',
         'delivery_date' => 'date',
@@ -130,6 +133,18 @@ class Order extends Model
      *
      * @return string
      */
+    /**
+     * Get a human-readable label for the current status.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'assigned'   => 'Waiting for Pickup',
+            'delivered'  => 'Delivered To Agent',
+            default      => Str::of($this->status)->replace('_', ' ')->title(),
+        };
+    }
+
     public static function generateReferenceNumber(): string
     {
         $prefix = 'ORD';
