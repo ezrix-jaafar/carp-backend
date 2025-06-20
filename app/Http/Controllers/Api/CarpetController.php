@@ -266,10 +266,13 @@ class CarpetController extends Controller
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $imageFile) {
                     $path = $imageFile->store('carpets/' . $carpet->id, 'r2');
+                    // Generate a publicly accessible URL for the stored image
+                    $url = config('filesystems.disks.r2.url') . '/' . $path;
                     
                     $image = Image::create([
                         'carpet_id' => $carpet->id,
                         'filename' => $path,
+                        'url' => $url,
                         'disk' => 'r2',
                         'size' => $imageFile->getSize(),
                         'mime_type' => $imageFile->getMimeType(),
@@ -365,10 +368,13 @@ class CarpetController extends Controller
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $imageFile) {
                     $path = $imageFile->store('carpets/' . $carpet->id, 'r2');
+                    // Generate a publicly accessible URL for the stored image
+                    $url = config('filesystems.disks.r2.url') . '/' . $path;
                     
                     $image = Image::create([
                         'carpet_id' => $carpet->id,
                         'filename' => $path,
+                        'url' => $url,
                         'disk' => 'r2',
                         'size' => $imageFile->getSize(),
                         'mime_type' => $imageFile->getMimeType(),
@@ -475,17 +481,50 @@ class CarpetController extends Controller
     public function uploadImage(Request $request, $id)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'images' => 'required|array',
-                'images.*' => 'required|file|image|max:10240', // Max 10MB
+            // Debug what we received
+            \Illuminate\Support\Facades\Log::info('Upload image request', [
+                'id' => $id,
+                'has_file' => $request->hasFile('images'),
+                'has_files' => $request->hasFile('images[]'),
+                'all' => $request->all(),
+                'files' => $request->allFiles()
             ]);
             
-            if ($validator->fails()) {
-                return response()->json(['errors' => $validator->errors()], 422);
-            }
+            // Get all files from the request
+            $files = $request->allFiles();
+            $hasValidFiles = false;
+            $uploadedImages = [];
             
             $user = $request->user();
             $carpet = Carpet::findOrFail($id);
+            
+            // Special handling for React Native which might not structure arrays properly
+            if (!empty($files)) {
+                \Illuminate\Support\Facades\Log::info('Files found', $files);
+                
+                // Try to find image files with any naming convention
+                foreach ($files as $key => $fileOrArray) {
+                    if (is_array($fileOrArray)) {
+                        // Handle properly formatted array
+                        foreach ($fileOrArray as $file) {
+                            if ($this->isValidImageFile($file)) {
+                                $uploadedImages[] = $file;
+                                $hasValidFiles = true;
+                            }
+                        }
+                    } else if ($this->isValidImageFile($fileOrArray)) {
+                        // Single file with array-like key (e.g. 'images[]')
+                        $uploadedImages[] = $fileOrArray;
+                        $hasValidFiles = true;
+                    }
+                }
+            }
+            
+            if (!$hasValidFiles) {
+                return response()->json([
+                    'errors' => ['images' => ['No valid image files were uploaded']]
+                ], 422);
+            }
             
             // Check if user has permission to upload images
             if ($user->role !== 'hq' && $user->role !== 'staff') {
@@ -505,13 +544,19 @@ class CarpetController extends Controller
             }
             
             // Handle image uploads
-            $uploadedImages = [];
-            foreach ($request->file('images') as $imageFile) {
+            foreach ($uploadedImages as $imageFile) {
                 $path = $imageFile->store('carpets/' . $carpet->id, 'r2');
+                    // Generate a publicly accessible URL for the stored image
+                    $url = config('filesystems.disks.r2.url') . '/' . $path;
+                
+                // Generate a URL for the image - likely stored in R2 with public access
+                $url = config('filesystems.disks.r2.url') . '/' . $path;
                 
                 $image = Image::create([
                     'carpet_id' => $carpet->id,
                     'filename' => $path,
+                        'url' => $url,
+                    'url' => $url, // Add the required url field
                     'disk' => 'r2',
                     'size' => $imageFile->getSize(),
                     'mime_type' => $imageFile->getMimeType(),
@@ -732,5 +777,24 @@ class CarpetController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+    
+    /**
+     * Check if a file is a valid image.
+     *
+     * @param \Illuminate\Http\UploadedFile $file
+     * @return bool
+     */
+    protected function isValidImageFile($file)
+    {
+        if (!$file || !$file->isValid()) {
+            return false;
+        }
+        
+        $mime = $file->getMimeType();
+        $validMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+        $maxSize = 10 * 1024 * 1024; // 10MB
+        
+        return in_array($mime, $validMimes) && $file->getSize() <= $maxSize;
     }
 }
