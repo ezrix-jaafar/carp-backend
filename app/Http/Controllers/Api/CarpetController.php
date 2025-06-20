@@ -462,7 +462,17 @@ class CarpetController extends Controller
      * @param int $id
      * @return \Illuminate\Http\JsonResponse
      */
+        /**
+     * Alias for backward compatibility with singular route.
+     * Reuses uploadImages logic.
+     */
     public function uploadImages(Request $request, $id)
+    {
+        // Backward compatibility: call the singular handler
+        return $this->uploadImage($request, $id);
+    }
+
+    public function uploadImage(Request $request, $id)
     {
         try {
             $validator = Validator::make($request->all(), [

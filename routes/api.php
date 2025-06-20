@@ -38,7 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/carpets', [App\Http\Controllers\Api\CarpetController::class, 'all']);
     Route::get('/carpets/assigned', [App\Http\Controllers\Api\CarpetController::class, 'assigned']);
     Route::apiResource('carpets', App\Http\Controllers\Api\CarpetController::class)->except(['index']);
-    Route::post('/carpets/{id}/images', [App\Http\Controllers\Api\CarpetController::class, 'uploadImage']);
+    Route::post('/carpets/{id}/images', [App\Http\Controllers\Api\CarpetController::class, 'uploadImages']);
     Route::delete('/carpets/{id}/images/{imageId}', [App\Http\Controllers\Api\CarpetController::class, 'deleteImage']);
     
     // Bulk Carpet Generation and QR Code Functionality
