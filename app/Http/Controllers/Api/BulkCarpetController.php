@@ -23,6 +23,7 @@ class BulkCarpetController extends Controller
         $validator = Validator::make($request->all(), [
             'quantity' => 'required|integer|min:1|max:50',
             'carpet_type_id' => 'nullable|exists:carpet_types,id',
+            'replace' => 'sometimes|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -32,8 +33,15 @@ class BulkCarpetController extends Controller
         $quantity = $request->input('quantity');
         $carpetTypeId = $request->input('carpet_type_id'); // Now optional
         
-        // Get current number of carpets
-        $currentCount = $order->carpets()->count();
+        $replace = $request->boolean('replace', false);
+        // Delete existing carpets if replace requested
+        if ($replace) {
+            $order->carpets()->delete();
+            $currentCount = 0;
+        } else {
+            // Get current number of carpets
+            $currentCount = $order->carpets()->count();
+        }
         
         // Create multiple carpet records
         $carpets = [];
@@ -41,7 +49,9 @@ class BulkCarpetController extends Controller
             $carpetNumber = $currentCount + $i;
             $qrCode = Carpet::generateQrCode($order->id, $carpetNumber);
             // Use the current count plus the total quantity being added for the denominator
-            $packNumber = $i . '/' . $quantity;
+            // For pack number we need denominator = currentCount + quantity when not replacing, otherwise quantity
+            $packTotal = $replace ? $quantity : ($currentCount + $quantity);
+            $packNumber = ($currentCount + $i) . '/' . $packTotal;
             
             // Create the base carpet record, carpet_type_id can be null
             $carpetData = [
