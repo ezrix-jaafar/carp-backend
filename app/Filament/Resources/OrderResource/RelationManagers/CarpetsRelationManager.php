@@ -155,6 +155,9 @@ class CarpetsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('qr_code')
             ->columns([
+                Tables\Columns\ImageColumn::make('thumbnail_url')
+                    ->label('Photo')
+                    ->height(60),
                 Tables\Columns\TextColumn::make('qr_code')
                     ->searchable()
                     ->limit(20)

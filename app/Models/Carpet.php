@@ -7,11 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+
 
 class Carpet extends Model
 {
     use HasFactory;
+    
+    /**
+     * Automatically append custom attributes when converting the model to an
+     * array / JSON. This lets us access `$carpet->thumbnail_url` directly in
+     * Filament columns without extra queries.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'thumbnail_url',
+    ];
     
     /**
      * The attributes that are mass assignable.
@@ -135,18 +146,20 @@ class Carpet extends Model
     }
     
     /**
-     * Generate a unique QR code for a carpet.
-     *
-     * @param int $orderId
-     * @param int $sequence
-     * @return string
-     */
-    /**
      * Generate a unique QR / carpet number in the format CARP-YYMMXXXXX.
-     * YY  = two-digit year
-     * MM  = two-digit month
-     * XXXXX = 5-digit running number that resets each month
+     * YY  = two-digit year, MM = two-digit month, XXXXX = 5-digit running number that resets each month.
+     * Returns the first image's public URL so Filament can show a thumbnail.
      */
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        // Prefer already-loaded relationship to avoid N+1 queries
+        $firstImage = $this->relationLoaded('images')
+            ? $this->images->first()
+            : $this->images()->first();
+
+        return $firstImage?->getFullUrl();
+    }
+
     public static function generateQrCode(int $orderId = 0, int $sequence = 0): string
     {
         $yearMonth = now()->format('ym'); // e.g. 2506 for June 2025

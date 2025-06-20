@@ -254,6 +254,9 @@ class CarpetResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('thumbnail_url')
+                    ->label('Photo')
+                    ->height(60),
                 Tables\Columns\TextColumn::make('order.reference_number')
                     ->label('Order #')
                     ->searchable()
