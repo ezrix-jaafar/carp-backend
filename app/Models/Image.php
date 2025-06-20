@@ -58,31 +58,31 @@ class Image extends Model
      */
     public function getFullUrl(): string
     {
-        // If direct URL is stored, return it
-        if ($this->url) {
+        // Case 1: 'url' field is already an absolute HTTP(S) URL.
+        if ($this->url && (\Illuminate\Support\Str::startsWith($this->url, 'http://') || \Illuminate\Support\Str::startsWith($this->url, 'https://'))) {
             return $this->url;
         }
-        
-        // For R2/S3 storage, construct the URL based on bucket and region
-        $disk = $this->disk ?? 'r2';
-        $driver = config("filesystems.disks.{$disk}.driver");
-        
-        if ($driver === 's3') {
-            $bucket = config("filesystems.disks.{$disk}.bucket");
-            $endpoint = config("filesystems.disks.{$disk}.endpoint");
-            
-            // If custom endpoint is used (like Cloudflare R2), construct URL directly
-            if ($endpoint) {
-                return rtrim($endpoint, '/') . '/' . $bucket . '/' . $this->filename;
-            }
-            
-            // For standard S3
-            $region = config("filesystems.disks.{$disk}.region", 'us-east-1');
-            return "https://{$bucket}.s3.{$region}.amazonaws.com/{$this->filename}";
+
+        $currentDiskName = $this->disk ?? config('filesystems.default');
+        $pathForStorage = $this->url ?: $this->filename; // Prefer 'url' if set (even if relative), else 'filename'
+
+        if (empty($pathForStorage)) {
+            \Illuminate\Support\Facades\Log::error("Image ID {$this->id}: Both url and filename are empty for disk '{$currentDiskName}'.");
+            return ''; // Or a placeholder image URL
         }
-        
-        // Fallback to just returning the filename
-        return $this->filename;
+
+        // Case 2: Use Storage facade to get the URL. This handles S3, R2, public local disk, etc., based on filesystem config.
+        // It respects visibility, 'url' config in filesystems.php, etc.
+        if (config("filesystems.disks.{$currentDiskName}")) {
+            // If $pathForStorage is an absolute path on the server for a local disk, 
+            // Storage::url() might not work as expected. It expects path relative to disk root.
+            // Assuming $pathForStorage (from $this->url or $this->filename) is stored as a relative path within its disk.
+            return \Illuminate\Support\Facades\Storage::disk($currentDiskName)->url($pathForStorage);
+        }
+
+        // Fallback / Error: If disk is not configured.
+        \Illuminate\Support\Facades\Log::error("Image ID {$this->id}: Disk '{$currentDiskName}' not found in filesystem configuration.");
+        return ''; // Or a placeholder image URL
     }
     
     /**
