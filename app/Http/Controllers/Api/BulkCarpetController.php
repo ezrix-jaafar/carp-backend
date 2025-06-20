@@ -122,7 +122,7 @@ class BulkCarpetController extends Controller
             'width' => 'nullable|numeric|min:0.1',
             'length' => 'nullable|numeric|min:0.1',
             'color' => 'nullable|string|max:255',
-            'status' => 'nullable|in:pending,picked_up,in_cleaning,cleaned,delivered',
+            'status' => 'nullable|in:pending,picked_up,in_cleaning,hq_inspection,cleaned,delivered',
             'notes' => 'nullable|string',
             'additional_charges' => 'nullable|numeric|min:0',
             'carpet_type_id' => 'nullable|exists:carpet_types,id',
