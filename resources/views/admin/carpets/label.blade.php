@@ -75,40 +75,6 @@
 </head>
 <body>
     <div class="label-container">
-        <div class="company-info">
-            <div class="company-name">CARPET CLEANING SERVICE</div>
-            <div class="company-contact">123 Clean Street, Kuala Lumpur • Tel: +60 12-345-6789</div>
-        </div>
-        
-        <div class="carpet-info">
-            <div class="info-row">
-                <div class="info-label">Order:</div>
-                <div class="info-value">{{ $orderRef }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Client:</div>
-                <div class="info-value">{{ $clientName }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Type:</div>
-                <div class="info-value">{{ $carpetType }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Dimensions:</div>
-                <div class="info-value">{{ $carpet->dimensions }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Color:</div>
-                <div class="info-value">{{ $carpet->color }}</div>
-            </div>
-            @if($carpet->notes)
-            <div class="info-row">
-                <div class="info-label">Notes:</div>
-                <div class="info-value">{{ $carpet->notes }}</div>
-            </div>
-            @endif
-        </div>
-        
         <div class="qr-container">
             <div class="qr-code">
                 {!! $qrCode !!}
@@ -116,9 +82,47 @@
             <div class="qr-text">{{ $carpet->qr_code }}</div>
         </div>
         
-        <div class="carpet-id">
-            #{{ $carpet->id }}
+        <div class="carpet-info">
+            <div class="company-name">CARPET CLEANING SERVICE</div>
+            <div class="company-contact">123 Clean Street, Kuala Lumpur • Tel: +60 12-345-6789</div>
         </div>
+        
+        <div class="carpet-info">
+            <div class="info-row">
+                <div class="info-label">Agent:</div>
+                <div class="info-value">{{ optional($carpet->order->agent->user)->name ?? 'Unassigned' }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Pickup:</div>
+                <div class="info-value">{{ optional($carpet->order->pickup_date) ? \Carbon\Carbon::parse($carpet->order->pickup_date)->format('d/m/Y') : '-' }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Customer:</div>
+                <div class="info-value">{{ $clientName }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Carpet #:</div>
+                <div class="info-value">{{ $carpet->qr_code }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Pack #:</div>
+                <div class="info-value">{{ $carpet->pack_number }}</div>
+            </div>
+            <!-- Removed notes and other unused fields -->
+            <div class="info-row">
+                <div class="info-label">Notes:</div>
+                <div class="info-value">{{ $carpet->notes }}</div>
+            </div>
+            @endif
+        </div>
+            <div class="qr-code">
+                {!! $qrCode !!}
+            </div>
+            <div class="qr-text">{{ $carpet->qr_code }}</div>
+        </div>
+        
+        
+            
         
         <div class="footer">
             Printed on {{ now()->format('d/m/Y H:i') }}

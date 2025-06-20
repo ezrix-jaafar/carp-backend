@@ -52,8 +52,10 @@ class CarpetLabelController extends Controller
             'orderRef' => $carpet->order->reference_number,
         ];
         
-        // Generate PDF
+        // Generate PDF and set custom paper size (50mm x 80mm)
         $pdf = PDF::loadView('admin.carpets.label', $data);
+        // 1 mm ≈ 2.83465 pt, so 50 mm ≈ 141.73 pt, 80 mm ≈ 226.77 pt
+        $pdf->setPaper([0, 0, 141.73, 226.77], 'portrait');
         
         // Return for download/print
         return $pdf->stream("carpet-label-{$carpet->id}.pdf");
@@ -82,8 +84,9 @@ class CarpetLabelController extends Controller
             'clientName' => $carpets->first()->order->client->user->name ?? 'Unknown Client',
         ];
         
-        // Generate PDF with multiple labels
+        // Generate PDF with multiple labels and set custom paper size (50mm x 80mm)
         $pdf = PDF::loadView('admin.carpets.labels-batch', $data);
+        $pdf->setPaper([0, 0, 141.73, 226.77], 'portrait');
         
         // Return for download/print
         return $pdf->stream("carpet-labels-order-{$orderId}.pdf");

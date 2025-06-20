@@ -271,9 +271,8 @@ class CarpetsRelationManager extends RelationManager
 
                         // Return success notification
                         if ($generatePdf) {
-                            // Redirect to a printable page with all the QR codes
-                            $carpetIds = collect($carpets)->pluck('id')->join(',');
-                            $url = route('admin.carpets.bulk-qr-codes', ['carpets' => $carpetIds]);
+                            // Redirect to PDF labels for the entire order (50mm x 80mm format)
+                            $url = route('admin.orders.print-carpet-labels', ['order' => $order->id]);
 
                             // Success message with redirect
                             $action->success('Generated ' . $quantity . ' carpet labels successfully!');

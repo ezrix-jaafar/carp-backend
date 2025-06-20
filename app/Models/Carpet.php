@@ -141,24 +141,32 @@ class Carpet extends Model
      * @param int $sequence
      * @return string
      */
-    public static function generateQrCode(int $orderId, int $sequence): string
+    /**
+     * Generate a unique QR / carpet number in the format CARP-YYMMXXXXX.
+     * YY  = two-digit year
+     * MM  = two-digit month
+     * XXXXX = 5-digit running number that resets each month
+     */
+    public static function generateQrCode(int $orderId = 0, int $sequence = 0): string
     {
-        $prefix = 'CARP';
-        $date = now()->format('Ymd');
-        $orderPrefix = str_pad($orderId, 3, '0', STR_PAD_LEFT);
-        $sequenceNumber = str_pad($sequence, 2, '0', STR_PAD_LEFT);
-        
-        // Generate a base QR code
-        $qrCode = $prefix . '-' . $orderPrefix . '-' . $sequenceNumber . '-' . $date;
-        
-        // Check if this QR code already exists and add a suffix if needed
-        $count = 0;
-        $originalQrCode = $qrCode;
-        while (self::where('qr_code', $qrCode)->exists()) {
-            $count++;
-            $qrCode = $originalQrCode . '-' . $count;
+        $yearMonth = now()->format('ym'); // e.g. 2506 for June 2025
+        $basePrefix = 'CARP-' . $yearMonth;
+
+        // Find latest carpet this month
+        $latest = self::where('qr_code', 'like', $basePrefix . '%')
+            ->orderByDesc('qr_code')
+            ->first();
+
+        if ($latest) {
+            // Extract numeric part (last 5 chars) and increment
+            $lastNumber = intval(substr($latest->qr_code, -5));
+            $nextNumber = $lastNumber + 1;
+        } else {
+            $nextNumber = 1;
         }
-        
-        return $qrCode;
+
+        $sequencePart = str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+
+        return $basePrefix . $sequencePart; // e.g. CARP-250600001
     }
 }
