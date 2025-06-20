@@ -271,7 +271,8 @@ class OrderController extends Controller
                     
                     $validTransitions = [
                         // Agent can accept or reject an assigned order
-                        'assigned' => ['agent_accepted', 'agent_rejected'],
+                        'awaiting_agent' => ['agent_accepted', 'agent_rejected'],
+                    'assigned' => ['agent_accepted', 'agent_rejected'],
                         'agent_accepted' => ['picked_up'],
                         'picked_up' => ['in_cleaning'],
                         'in_cleaning' => ['cleaned'],
@@ -565,6 +566,7 @@ class OrderController extends Controller
                 }
 
                 $validTransitions = [
+                    'awaiting_agent' => ['agent_accepted', 'agent_rejected'],
                     'assigned' => ['agent_accepted', 'agent_rejected'],
                     'agent_accepted' => ['picked_up'],
                     'picked_up' => ['in_cleaning'],
