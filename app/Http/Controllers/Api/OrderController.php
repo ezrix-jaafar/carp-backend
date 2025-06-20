@@ -239,7 +239,7 @@ class OrderController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'agent_id' => 'nullable|exists:agents,id',
-                'status' => 'nullable|in:pending,assigned,agent_accepted,agent_rejected,picked_up,in_cleaning,hq_inspection,cleaned,delivered,completed,cancelled',
+                'status' => 'nullable|in:pending,assigned,agent_accepted,agent_rejected,agent_pickup,hq_pickup,picked_up,in_cleaning,hq_inspection,cleaned,delivered,completed,cancelled',
                 'pickup_date' => 'nullable|date',
                 'pickup_address_id' => 'nullable|exists:addresses,id',
                 'delivery_date' => 'nullable|date|after_or_equal:pickup_date',
@@ -273,7 +273,10 @@ class OrderController extends Controller
                         // Agent can accept or reject an assigned order
                         'awaiting_agent' => ['agent_accepted', 'agent_rejected'],
                     'assigned' => ['agent_accepted', 'agent_rejected'],
-                        'agent_accepted' => ['picked_up'],
+                        'agent_accepted' => ['agent_pickup', 'picked_up'],
+                'agent_pickup' => ['hq_pickup'],
+                'hq_pickup' => ['hq_inspection'],
+                'hq_inspection' => ['in_cleaning'],
                         'picked_up' => ['in_cleaning'],
                         'in_cleaning' => ['cleaned'],
                         'cleaned' => ['delivered'],
@@ -546,7 +549,7 @@ class OrderController extends Controller
             $order = Order::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
-                'status' => 'required|in:agent_accepted,agent_rejected,picked_up,in_cleaning,cleaned,delivered,completed,cancelled',
+                'status' => 'required|in:agent_accepted,agent_rejected,agent_pickup,hq_pickup,picked_up,in_cleaning,cleaned,delivered,completed,cancelled',
             ]);
 
             if ($validator->fails()) {
@@ -568,7 +571,10 @@ class OrderController extends Controller
                 $validTransitions = [
                     'awaiting_agent' => ['agent_accepted', 'agent_rejected'],
                     'assigned' => ['agent_accepted', 'agent_rejected'],
-                    'agent_accepted' => ['picked_up'],
+                    'agent_accepted' => ['agent_pickup', 'picked_up'],
+                'agent_pickup' => ['hq_pickup'],
+                'hq_pickup' => ['hq_inspection'],
+                'hq_inspection' => ['in_cleaning'],
                     'picked_up' => ['in_cleaning'],
                     'in_cleaning' => ['cleaned'],
                     'cleaned' => ['delivered'],

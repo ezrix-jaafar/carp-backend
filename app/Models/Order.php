@@ -141,6 +141,8 @@ class Order extends Model
         return match ($this->status) {
             'assigned'   => 'Waiting for Pickup',
             'delivered'  => 'Delivered To Agent',
+            'agent_pickup' => 'Picked Up',
+            'hq_pickup'    => 'HQ Pickup',
             default      => Str::of($this->status)->replace('_', ' ')->title(),
         };
     }
