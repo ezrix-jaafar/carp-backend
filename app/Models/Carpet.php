@@ -22,6 +22,7 @@ class Carpet extends Model
      */
     protected $appends = [
         'thumbnail_url',
+        'images_with_url',
     ];
     
     /**
@@ -145,6 +146,30 @@ class Carpet extends Model
         return null;
     }
     
+    /**
+     * Accessor to return all images with a full URL for frontend apps.
+     *
+     * @return array
+     */
+    public function getImagesWithUrlAttribute(): array
+    {
+        // Always use the loaded relationship if available
+        $images = $this->relationLoaded('images') ? $this->images : $this->images()->get();
+        return $images->map(function ($img) {
+            return [
+                'id' => $img->id,
+                'url' => $img->getFullUrl(),
+                'filename' => $img->filename,
+                'disk' => $img->disk,
+                'size' => $img->size,
+                'mime_type' => $img->mime_type,
+                'uploaded_by' => $img->uploaded_by,
+                'created_at' => $img->created_at,
+                'updated_at' => $img->updated_at,
+            ];
+        })->toArray();
+    }
+
     /**
      * Generate a unique QR / carpet number in the format CARP-YYMMXXXXX.
      * YY  = two-digit year, MM = two-digit month, XXXXX = 5-digit running number that resets each month.

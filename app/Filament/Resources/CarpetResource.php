@@ -20,9 +20,9 @@ class CarpetResource extends Resource
     protected static ?string $model = Carpet::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-squares-2x2';
-    
+
     protected static ?string $navigationGroup = 'Operations';
-    
+
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
@@ -47,32 +47,32 @@ class CarpetResource extends Resource
                                         Forms\Components\Select::make('client_id')
                                             ->label('Client')
                                             ->relationship('client', 'id')
-                                            ->getOptionLabelFromRecordUsing(fn ($record) => 
+                                            ->getOptionLabelFromRecordUsing(fn ($record) =>
                                                 optional($record->user)->name ?: "Client #{$record->id}")
                                             ->searchable()
                                             ->required()
                                             ->prefixIcon('heroicon-o-user'),
-                                            
+
                                         Forms\Components\TextInput::make('total_carpets')
                                             ->label('Number of Carpets')
                                             ->required()
                                             ->numeric()
                                             ->default(1)
                                             ->prefixIcon('heroicon-o-squares-2x2'),
-                                            
+
                                         Forms\Components\DatePicker::make('pickup_date')
                                             ->label('Pickup Date')
                                             ->required()
                                             ->default(now())
                                             ->prefixIcon('heroicon-o-calendar'),
-                                            
+
                                         Forms\Components\TextInput::make('pickup_address')
                                             ->label('Pickup Address')
                                             ->required()
                                             ->prefixIcon('heroicon-o-map-pin')
                                             ->maxLength(255),
                                     ]),
-                                    
+
                                 Forms\Components\TextInput::make('qr_code')
                                     ->label('QR Code')
                                     ->helperText('Will be auto-generated upon submission')
@@ -83,7 +83,7 @@ class CarpetResource extends Resource
                             ]),
                     ])
                     ->collapsible(),
-                    
+
                 // Carpet Details Section
                 Forms\Components\Section::make('Carpet Details')
                     ->description('Carpet type, dimensions, and appearance')
@@ -101,16 +101,16 @@ class CarpetResource extends Resource
                                             ->required()
                                             ->prefixIcon('heroicon-o-tag')
                                             ->maxLength(255),
-                                            
+
                                         Forms\Components\Textarea::make('description')
                                             ->label('Description')
                                             ->maxLength(65535),
-                                            
+
                                         Forms\Components\Toggle::make('is_per_square_foot')
                                             ->label('Price Per Square Foot')
                                             ->default(false)
                                             ->helperText('If enabled, price is calculated per square foot. Otherwise, it\'s a fixed price.'),
-                                            
+
                                         Forms\Components\TextInput::make('price')
                                             ->label('Price')
                                             ->required()
@@ -124,19 +124,19 @@ class CarpetResource extends Resource
                                     ->required()
                                     ->afterStateUpdated(function ($state, callable $set, ?Carpet $record) {
                                         if (!$state) return;
-                                        
+
                                         $carpetType = CarpetType::find($state);
                                         if (!$carpetType) return;
-                                        
+
                                         // Optionally clear dimensions if switching between pricing types
-                                        if ($record && $record->carpetType && 
+                                        if ($record && $record->carpetType &&
                                             $record->carpetType->is_per_square_foot != $carpetType->is_per_square_foot) {
                                             $set('width', null);
                                             $set('length', null);
                                         }
                                     }),
                             ]),
-                            
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('width')
@@ -149,7 +149,7 @@ class CarpetResource extends Resource
                                     ->prefixIcon('heroicon-o-arrows-right-left')
                                     ->helperText('Enter dimensions in feet')
                                     ->reactive(),
-                                    
+
                                 Forms\Components\TextInput::make('length')
                                     ->label('Length (ft)')
                                     ->numeric()
@@ -161,7 +161,7 @@ class CarpetResource extends Resource
                                     ->helperText('Enter dimensions in feet')
                                     ->reactive(),
                             ]),
-                            
+
                         Forms\Components\Grid::make(2)
                             ->schema([
                                 Forms\Components\Placeholder::make('calculated_price')
@@ -170,20 +170,20 @@ class CarpetResource extends Resource
                                         $carpetTypeId = $get('carpet_type_id');
                                         $width = $get('width');
                                         $length = $get('length');
-                                        
+
                                         if (!$carpetTypeId || !$width || !$length) {
                                             return 'RM 0.00';
                                         }
-                                        
+
                                         $carpetType = CarpetType::find($carpetTypeId);
                                         if (!$carpetType) {
                                             return 'RM 0.00';
                                         }
-                                        
+
                                         $price = $carpetType->calculatePrice($width, $length);
                                         return 'RM ' . number_format($price, 2);
                                     }),
-                                    
+
                                 Forms\Components\TextInput::make('color')
                                     ->label('Carpet Color')
                                     ->required()
@@ -192,7 +192,7 @@ class CarpetResource extends Resource
                                     ->helperText('Main color of the carpet')
                                     ->maxLength(255),
                             ]),
-                            
+
                         Forms\Components\Grid::make(1)
                             ->schema([
                                 Forms\Components\TextInput::make('additional_charges')
@@ -206,13 +206,14 @@ class CarpetResource extends Resource
                             ]),
                     ])
                     ->collapsible(),
-                    
+
                 // Status and Notes Section
                 Forms\Components\Section::make('Status and Notes')
                     ->description('Current processing status and special instructions')
                     ->schema([
                         Forms\Components\Grid::make(1)
                             ->schema([
+
                                 Forms\Components\Select::make('status')
                                     ->label('Carpet Status')
                                     ->options([
@@ -235,7 +236,7 @@ class CarpetResource extends Resource
                                         };
                                     }),
                             ]),
-                            
+
                         Forms\Components\Grid::make(1)
                             ->schema([
                                 Forms\Components\Textarea::make('notes')
@@ -274,7 +275,7 @@ class CarpetResource extends Resource
                 Tables\Columns\TextColumn::make('square_footage')
                     ->label('Size (sq ft)')
                     ->getStateUsing(fn (Carpet $record) => $record->square_footage ? $record->square_footage . ' sq ft' : null)
-                    ->description(fn (Carpet $record) => $record->width && $record->length ? 
+                    ->description(fn (Carpet $record) => $record->width && $record->length ?
                         $record->width . ' × ' . $record->length . ' ft' : null),
                 // Legacy fields removed as part of carpet type pricing migration
                 Tables\Columns\TextColumn::make('color'),
@@ -329,7 +330,7 @@ class CarpetResource extends Resource
                         $timestamp = now()->format('YmdHis');
                         $random = substr(md5(rand()), 0, 5);
                         $qrCode = "CARP-{$record->order_id}-{$timestamp}-{$random}";
-                        
+
                         $record->update(['qr_code' => $qrCode]);
                     }),
                 Tables\Actions\Action::make('print_label')
@@ -354,12 +355,12 @@ class CarpetResource extends Resource
                     ])
                     ->action(function ($record, array $data) {
                         $record->update(['status' => $data['status']]);
-                        
+
                         // Check if we need to update the order status
                         $allCarpetsStatus = $record->order->carpets()
                             ->pluck('status')
                             ->toArray();
-                        
+
                         // If all carpets have the same status, update the order
                         if (count(array_unique($allCarpetsStatus)) === 1) {
                             $orderStatus = match ($data['status']) {
@@ -370,7 +371,7 @@ class CarpetResource extends Resource
                                 'delivered' => 'delivered',
                                 default => null,
                             };
-                            
+
                             if ($orderStatus) {
                                 $record->order->update(['status' => $orderStatus]);
                             }
