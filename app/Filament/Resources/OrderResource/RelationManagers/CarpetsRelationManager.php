@@ -9,6 +9,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use App\Models\Carpet;
+use Illuminate\Support\Facades\Storage;
 
 class CarpetsRelationManager extends RelationManager
 {
@@ -100,6 +102,8 @@ class CarpetsRelationManager extends RelationManager
                     ])
                     ->collapsible(),
 
+
+
                 // Services and pricing section
                 Forms\Components\Section::make('Services & Pricing')
                     ->description('Additional services and charges')
@@ -131,13 +135,18 @@ class CarpetsRelationManager extends RelationManager
                             ->label('Carpet Photos')
                             ->image()
                             ->multiple()
+                            ->reorderable()
+                            ->appendFiles()
                             ->maxFiles(5)
                             ->disk('public')
-                            ->directory('carpet-images')
+                            ->directory(function (?RelationManager $livewire) {
+                                $orderId = $livewire->ownerRecord->id;
+                                return "carpet-images/{$orderId}";
+                            })
                             ->required(false)
-                            ->helperText('Take photos of the carpet (required for agents)')
-                            ->downloadable()
-                            ->dehydrated(false),
+                            ->helperText('Upload photos of the carpet. You can add new ones or remove existing ones.')
+                            ->downloadable(),
+
 
                         Forms\Components\Textarea::make('notes')
                             ->label('Client Special Request')
@@ -348,7 +357,47 @@ class CarpetsRelationManager extends RelationManager
                     }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->mutateRecordDataUsing(function (array $data, Carpet $record): array {
+                        $data['carpet_images'] = $record->images->pluck('filename')->all();
+                        return $data;
+                    })
+                    ->using(function (Carpet $record, array $data): Carpet {
+                        // Handle image updates
+                        $newImagePaths = $data['carpet_images'] ?? [];
+                        $existingImagePaths = $record->images->pluck('filename')->all();
+
+                        // Images to delete
+                        $imagesToDelete = array_diff($existingImagePaths, $newImagePaths);
+                        if (!empty($imagesToDelete)) {
+                            $images = $record->images()->whereIn('filename', $imagesToDelete)->get();
+                            foreach ($images as $image) {
+                                Storage::disk('public')->delete($image->filename);
+                                $image->delete();
+                            }
+                        }
+                        
+                        // Images to add
+                        $imagesToAdd = array_diff($newImagePaths, $existingImagePaths);
+                        if (!empty($imagesToAdd)) {
+                            foreach ($imagesToAdd as $imagePath) {
+                                $record->images()->create([
+                                    'filename' => $imagePath,
+                                    'url' => Storage::disk('public')->url($imagePath),
+                                    'uploaded_by' => auth()->user()?->id,
+                                    'disk' => 'public',
+                                    'size' => Storage::disk('public')->size($imagePath),
+                                    'mime_type' => Storage::disk('public')->mimeType($imagePath),
+                                ]);
+                            }
+                        }
+
+                        // Unset carpet_images from data to prevent errors when updating the carpet model
+                        unset($data['carpet_images']);
+                        
+                        $record->update($data);
+                        return $record;
+                    }),
                 Tables\Actions\DeleteAction::make(),
                 Tables\Actions\Action::make('update_status')
                     ->label('Update Status')

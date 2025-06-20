@@ -207,6 +207,22 @@ class CarpetResource extends Resource
                     ])
                     ->collapsible(),
 
+                // Carpet Image Section
+                Forms\Components\Section::make('Carpet Image')
+                    ->description('Image of the carpet uploaded from the agent app.')
+                    ->schema([
+                        Forms\Components\Placeholder::make('image_preview')
+                            ->label('')
+                            ->content(function (?Carpet $record): ?string {
+                                if ($record && $record->thumbnail_url) {
+                                    return '<img src="' . e($record->thumbnail_url) . '" style="max-height: 300px; border-radius: 0.5rem;" alt="Carpet Image"/>';
+                                }
+                                return 'No image available.';
+                            })
+                            ->hidden(fn (?Carpet $record) => !$record),
+                    ])
+                    ->collapsible(),
+
                 // Status and Notes Section
                 Forms\Components\Section::make('Status and Notes')
                     ->description('Current processing status and special instructions')
